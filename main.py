@@ -1,5 +1,6 @@
 
 import numpy as np
+import math
 
 ### a function to create a unique increasing ID
 ### note that this is just a quick-and-easy way to create a global order
@@ -78,13 +79,18 @@ class BackproppableArray(object):
         #add first layer to visited list and to queue 
         dependencies = self.dependencies
         queue = deque(dependencies)
+        
+        print("we're starting heres")
         #travel through tree
         while queue:
             current = queue.pop()
             new_deps = set(current.dependencies) - set(dependencies)
-            queue.append(list(new_deps))
+            queue.extend(list(new_deps))
 
             dependencies.append(current)
+            # print(current)
+            # print(current.data)
+            print(current.grad)
 
         return dependencies
     
@@ -394,9 +400,21 @@ class TestFxs(object):
 if __name__ == "__main__":
     # TODO: Test your code using the provided test functions and your own functions
     n = np.random.random()
-    print(n)
+    # print(n)
+    n = 2
     
-    result = TestFxs.df1(n)
-    assert(numerical_diff(TestFxs.f1, n) == TestFxs.df1(n))
-    assert(backprop_diff(TestFxs.f1, n) == TestFxs.df1(n))
+    result = TestFxs.df1dx(n)
+
+    # note for writeup: there's an issue with the epsilon for scalar:
+    #must round for equality i.e. 2 dne 2.0000000000131024
+
+    assert(math.isclose(numerical_diff(TestFxs.f1, n),result))
+
+    b = backprop_diff(TestFxs.f1, n)
+    print("my final answer:")
+    print(b)
+    
+
+    assert(math.isclose(backprop_diff(TestFxs.f1, n),result))
+
 
