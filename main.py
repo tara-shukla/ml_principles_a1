@@ -105,6 +105,16 @@ class BackproppableArray(object):
         #           since the gradient of a number with respect to itself is 1
         #   (4) call the grad_fn function for all the dependencies in the sorted reverse order
 
+        #sort using order field: more recent have bigger order aka are first in backprop
+        self.all_dependencies = sorted(all_my_dependencies, key = lambda x:x.order)
+
+        for dep in self.all_dependencies:
+            dep.grad = 0
+
+        self.grad = 1
+        self.grad_fn()
+
+
     # function that is called to process a single step of backprop for this array
     # when called, it must be the case that self.grad contains the gradient of the loss (the
     #     thing we are differentating) with respect to this array
