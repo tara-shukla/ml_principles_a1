@@ -112,7 +112,8 @@ class BackproppableArray(object):
             dep.grad = 0
 
         self.grad = 1
-        self.grad_fn()
+        for dep in self.all_dependencies:
+            dep.grad_fn()
 
 
     # function that is called to process a single step of backprop for this array
