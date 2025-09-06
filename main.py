@@ -109,7 +109,7 @@ class BackproppableArray(object):
 
         #sort using order field: more recent have bigger order aka are first in backprop
         #possible bug - reverse or not?? idk 
-        sorted_deps = sorted(all_my_dependencies, key = lambda x:x.order)
+        sorted_deps = sorted(all_my_dependencies, key = lambda x:x.order, reverse = True)
 
         for dep in sorted_deps:
             # dep.grad = np.zeros_like(dep.data)
