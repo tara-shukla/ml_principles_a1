@@ -1,6 +1,8 @@
 
 import numpy as np
 import math
+from collections import deque
+
 
 ### a function to create a unique increasing ID
 ### note that this is just a quick-and-easy way to create a global order
@@ -75,12 +77,10 @@ class BackproppableArray(object):
 
         #possible bug with repeating addition of dependencies but tried to avoid
 
-        from collections import deque
         #add first layer to visited list and to queue 
-        dependencies = self.dependencies
-        queue = deque(dependencies)
+        dependencies = []
+        queue = deque(self.dependencies)
         
-        print("we're starting heres")
         #travel through tree
         while queue:
             current = queue.pop()
@@ -88,9 +88,6 @@ class BackproppableArray(object):
             queue.extend(list(new_deps))
 
             dependencies.append(current)
-            # print(current)
-            # print(current.data)
-            print(current.grad)
 
         return dependencies
     
@@ -118,7 +115,8 @@ class BackproppableArray(object):
             dep.grad = 0
 
         self.grad = 1
-        for dep in self.all_dependencies:
+
+        for dep in [self]+self.all_dependencies:
             dep.grad_fn()
 
 
@@ -400,21 +398,34 @@ class TestFxs(object):
 if __name__ == "__main__":
     # TODO: Test your code using the provided test functions and your own functions
     n = np.random.random()
-    # print(n)
     n = 2
     
-    result = TestFxs.df1dx(n)
+    result1 = TestFxs.df1dx(n)
 
     # note for writeup: there's an issue with the epsilon for scalar:
     #must round for equality i.e. 2 dne 2.0000000000131024
 
-    assert(math.isclose(numerical_diff(TestFxs.f1, n),result))
+    assert(math.isclose(numerical_diff(TestFxs.f1, n),result1))
+    assert(math.isclose(backprop_diff(TestFxs.f1, n),result1))
 
-    b = backprop_diff(TestFxs.f1, n)
-    print("my final answer:")
-    print(b)
+
+    result2 = TestFxs.df2dx(n)
+    assert(math.isclose(numerical_diff(TestFxs.f2, n),result2))
+    assert(math.isclose(backprop_diff(TestFxs.f2, n),result2))
+
+
+    result3 = TestFxs.df3dx(n)
+    print("hewwo")
+    print(result3)
+    print(numerical_diff(TestFxs.f3, n))
+    print(backprop_diff(TestFxs.f3, n))
+    assert(math.isclose(numerical_diff(TestFxs.f3, n),result3))
+    assert(math.isclose(backprop_diff(TestFxs.f3, n),result3))
     
 
-    assert(math.isclose(backprop_diff(TestFxs.f1, n),result))
+    assert(math.isclose(backprop_diff(TestFxs.f4, n),numerical_diff(TestFxs.f4, n)))
+
+
+
 
 
