@@ -184,8 +184,6 @@ class BA_Sub(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (1.3, 2.3) implement grad fn for Sub
-
-        #1.3 scalar valued
         self.x.grad += self.grad
         self.y.grad -= self.grad
         
@@ -338,7 +336,7 @@ class TestFxs(object):
     @staticmethod
     def df1dx(x):
         # TODO (1.4) implement symbolic derivative of f1
-        pass
+        return 2
 
     @staticmethod
     def f2(x):
@@ -347,7 +345,7 @@ class TestFxs(object):
     @staticmethod
     def df2dx(x):
         # TODO (1.4) implement symbolic derivative of f2
-        pass
+        return 2*x
 
     @staticmethod
     def f3(x):
@@ -357,7 +355,11 @@ class TestFxs(object):
     @staticmethod
     def df3dx(x):
         # TODO (1.4) implement symbolic derivative of f3
-        pass
+        a = (x**2) - (4*x) +3
+        b = (x**2) - (4*x) + 5
+
+        return (-a)/(b**2)
+        
 
     @staticmethod
     def f4(x):
