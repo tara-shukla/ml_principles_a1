@@ -60,7 +60,34 @@ class BackproppableArray(object):
     # the returned list must only include each dependency ONCE
     def all_dependencies(self):
         # TODO: (1.1) implement some sort of search to get all the dependencies
-        pass
+
+        '''
+        First, implement the utility function BackproppableArray.all_dependencies. 
+        This function returns all the backproppable arrays on which an array depends in its computation, 
+        including indirectly. That is, this function should return a python list containing this array,
+        any direct dependencies of this array (i.e. the arrays stored in the dependencies list), 
+        any dependencies of those dependencies, any dependencies of those dependencies, and so 
+        on indefinitely. To implement this utility function, you'll want to use some sort of graph search 
+        algorithm, e.g. breadth first search, using the dependencies field as the edges of graph.
+
+        '''
+
+        #possible bug with repeating addition of dependencies but tried to avoid
+
+        from collections import deque
+        #add first layer to visited list and to queue 
+        dependencies = self.dependencies
+        queue = deque(dependencies)
+        #travel through tree
+        while queue:
+            current = queue.pop()
+            new_deps = set(current.dependencies) - set(dependencies)
+            queue.append(list(new_deps))
+
+            dependencies.append(current)
+
+        return dependencies
+    
 
     # compute gradients of this array with respect to everything it depends on
     def backward(self):
