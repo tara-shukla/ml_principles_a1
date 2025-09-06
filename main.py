@@ -325,7 +325,6 @@ def backprop_diff(f, x):
     return ba_x.grad
 
 
-
 # class to store test functions
 class TestFxs(object):
     # scalar-to-scalar tests
@@ -394,4 +393,10 @@ class TestFxs(object):
 
 if __name__ == "__main__":
     # TODO: Test your code using the provided test functions and your own functions
-    pass
+    n = np.random.random()
+    print(n)
+    
+    result = TestFxs.df1(n)
+    assert(numerical_diff(TestFxs.f1, n) == TestFxs.df1(n))
+    assert(backprop_diff(TestFxs.f1, n) == TestFxs.df1(n))
+
