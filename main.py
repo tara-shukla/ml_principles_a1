@@ -75,10 +75,9 @@ class BackproppableArray(object):
 
         '''
 
-        #possible bug with repeating addition of dependencies but tried to avoid
-
+        #things started crashing out when added self to deps but it shd be like that?? chat wtf
         #add first layer to visited list and to queue 
-        dependencies = []
+        dependencies = [self]
         queue = deque(self.dependencies)
         
         #travel through tree
@@ -109,14 +108,17 @@ class BackproppableArray(object):
         #   (4) call the grad_fn function for all the dependencies in the sorted reverse order
 
         #sort using order field: more recent have bigger order aka are first in backprop
-        self.all_dependencies = sorted(all_my_dependencies, key = lambda x:x.order)
+        #possible bug - reverse or not?? idk 
+        sorted_deps = sorted(all_my_dependencies, key = lambda x:x.order)
 
-        for dep in self.all_dependencies:
+        for dep in sorted_deps:
+            # dep.grad = np.zeros_like(dep.data)
             dep.grad = 0
 
+        # self.grad = np.ones_like(dep.data)
         self.grad = 1
 
-        for dep in [self]+self.all_dependencies:
+        for dep in sorted_deps:
             dep.grad_fn()
 
 
@@ -245,7 +247,7 @@ class BA_Exp(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (1.3) implement grad fn for Exp
-        self.x.grad = self.grad*exp(self.x.data)
+        self.x.grad += self.grad*exp(self.x.data)
         pass
 
 def exp(x):
@@ -263,7 +265,7 @@ class BA_Log(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (1.3) implement grad fn for Log
-        self.x.grad = self.grad*(1/self.x.data)
+        self.x.grad += self.grad*(1/self.x.data)
 
 def log(x):
     if isinstance(x, BackproppableArray):
@@ -414,6 +416,8 @@ if __name__ == "__main__":
     assert(math.isclose(backprop_diff(TestFxs.f2, n),result2))
 
 
+    assert(math.isclose(backprop_diff(TestFxs.f4, n),numerical_diff(TestFxs.f4, n)))
+
     result3 = TestFxs.df3dx(n)
     print("hewwo")
     print(result3)
@@ -423,7 +427,6 @@ if __name__ == "__main__":
     assert(math.isclose(backprop_diff(TestFxs.f3, n),result3))
     
 
-    assert(math.isclose(backprop_diff(TestFxs.f4, n),numerical_diff(TestFxs.f4, n)))
 
 
 
