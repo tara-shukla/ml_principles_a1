@@ -184,7 +184,11 @@ class BA_Sub(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (1.3, 2.3) implement grad fn for Sub
-        pass
+
+        #1.3 scalar valued
+        self.x.grad += self.grad
+        self.y.grad -= self.grad
+        
 
 # a class for an array that's the result of a multiplication operation
 class BA_Mul(BackproppableArray):
@@ -196,7 +200,9 @@ class BA_Mul(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (1.3, 2.3) implement grad fn for Mul
-        pass
+        self.x.grad += self.grad*self.y.data
+        self.y.grad += self.grad*self.x.data
+    
 
 # a class for an array that's the result of a division operation
 class BA_Div(BackproppableArray):
@@ -208,7 +214,8 @@ class BA_Div(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (1.3, 2.3) implement grad fn for Div
-        pass
+        self.x.grad += self.grad*(1/self.y.data)
+        self.y.grad += self.grad*( (-1*self.x.data)* ((self.y.data)**(-2) ))
 
 
 # a class for an array that's the result of a matrix multiplication operation
@@ -236,6 +243,7 @@ class BA_Exp(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (1.3) implement grad fn for Exp
+        self.x.grad = self.grad*exp(self.x.data)
         pass
 
 def exp(x):
@@ -253,7 +261,7 @@ class BA_Log(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (1.3) implement grad fn for Log
-        pass
+        self.x.grad = self.grad*(1/self.x.data)
 
 def log(x):
     if isinstance(x, BackproppableArray):
