@@ -77,18 +77,18 @@ class BackproppableArray(object):
 
         #things started crashing out when added self to deps but it shd be like that?? chat wtf
         #add first layer to visited list and to queue 
-        dependencies = [self]
         queue = deque(self.dependencies)
-        
+        visited = set()
+        visited.add(self)
+
         #travel through tree
         while queue:
             current = queue.pop()
-            new_deps = set(current.dependencies) - set(dependencies)
-            queue.extend(list(new_deps))
+            if current not in visited:
+                visited.add(current)
+                queue.extend(current.dependencies)
 
-            dependencies.append(current)
-
-        return dependencies
+        return list(visited)
     
 
     # compute gradients of this array with respect to everything it depends on
@@ -108,7 +108,6 @@ class BackproppableArray(object):
         #   (4) call the grad_fn function for all the dependencies in the sorted reverse order
 
         #sort using order field: more recent have bigger order aka are first in backprop
-        #possible bug - reverse or not?? idk 
         sorted_deps = sorted(all_my_dependencies, key = lambda x:x.order, reverse = True)
 
         for dep in sorted_deps:
@@ -419,10 +418,6 @@ if __name__ == "__main__":
     assert(math.isclose(backprop_diff(TestFxs.f4, n),numerical_diff(TestFxs.f4, n)))
 
     result3 = TestFxs.df3dx(n)
-    print("hewwo")
-    print(result3)
-    print(numerical_diff(TestFxs.f3, n))
-    print(backprop_diff(TestFxs.f3, n))
     assert(math.isclose(numerical_diff(TestFxs.f3, n),result3))
     assert(math.isclose(backprop_diff(TestFxs.f3, n),result3))
     
