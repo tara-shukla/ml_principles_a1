@@ -190,7 +190,7 @@ def get_broadcast(self):
     #repeat for self grad to be able to grad wrt y
     grad_y = self.grad
 
-    while (grad_y.ndim < self.y.data.ndim):
+    while (grad_y.ndim > self.y.data.ndim):
         grad_y = grad_y.sum(axis = 0)
 
     for i in range(self.y.data.ndim):
@@ -297,8 +297,8 @@ class BA_Exp(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (1.3) implement grad fn for Exp
-        self.x.grad += self.grad*exp(self.x.data)
-        pass
+        #use np exp or exp here??
+        self.x.grad += self.grad*np.exp(self.x.data)
 
 def exp(x):
     if isinstance(x, BackproppableArray):
@@ -325,8 +325,6 @@ def log(x):
 
 # TODO: Add your own function
 # END TODO
-
-
 
 
 
@@ -456,35 +454,65 @@ class TestFxs(object):
 
 
 def test_part1():
-    n = np.random.random()
-    n = 2
+    test_ranges = [
+        (lambda: np.random.random(), "tiny nums (0-1)"),
+        (lambda: np.random.uniform(1e3, 1e6), "big nums (1000-1M)"),
+        (lambda: np.random.uniform(1e6, 1e9), "super large nums (1M-1B)"),
+        (lambda: np.random.uniform(-1e6, 1e6), "everything"),
+    ]
     
-    result1 = TestFxs.df1dx(n)
+    for range, desc in test_ranges:
+        n = range
+        print("testing ", desc)
 
-    # note for writeup: there's an issue with the epsilon for scalar:
-    #must round for equality i.e. 2 dne 2.0000000000131024
+        for i in range(1000):
+            result1 = TestFxs.df1dx(n)
 
-    assert(math.isclose(numerical_diff(TestFxs.f1, n),result1, rel_tol=1e-05))
-    assert(math.isclose(backprop_diff(TestFxs.f1, n),result1, rel_tol=1e-05))
+            # note for writeup: there's an issue with the epsilon for scalar:
+            #must round for equality i.e. 2 dne 2.0000000000131024
 
-
-    result2 = TestFxs.df2dx(n)
-    assert(math.isclose(numerical_diff(TestFxs.f2, n),result2, rel_tol=1e-05))
-    assert(math.isclose(backprop_diff(TestFxs.f2, n),result2, rel_tol=1e-05))
+            assert(math.isclose(numerical_diff(TestFxs.f1, n),result1, rel_tol=1e-05))
+            assert(math.isclose(backprop_diff(TestFxs.f1, n),result1, rel_tol=1e-05))
 
 
-    assert(math.isclose(backprop_diff(TestFxs.f4, n),numerical_diff(TestFxs.f4, n), rel_tol=1e-05))
+            result2 = TestFxs.df2dx(n)
+            assert(math.isclose(numerical_diff(TestFxs.f2, n),result2, rel_tol=1e-05))
+            assert(math.isclose(backprop_diff(TestFxs.f2, n),result2, rel_tol=1e-05))
 
-    result3 = TestFxs.df3dx(n)
-    assert(math.isclose(numerical_diff(TestFxs.f3, n),result3, rel_tol=1e-05))
-    assert(math.isclose(backprop_diff(TestFxs.f3, n),result3, rel_tol=1e-05))
+
+            assert(math.isclose(backprop_diff(TestFxs.f4, n),
+                                numerical_diff(TestFxs.f4, n), 
+                                rel_tol=1e-05))
+
+            result3 = TestFxs.df3dx(n)
+            assert(math.isclose(numerical_diff(TestFxs.f3, n),result3, rel_tol=1e-05))
+            assert(math.isclose(backprop_diff(TestFxs.f3, n),result3, rel_tol=1e-05))
+    
 
     print('passed tests for part 1')
 
 
+def test_part2():
+    for i in range(1000):
+        n = np.random.uniform(0, 1)
+        print("n = ", n)
+        
+        assert(math.isclose(numerical_diff(TestFxs.g1, n),backprop_diff(TestFxs.g1, n), rel_tol=1e-05))
+        
+        print(numerical_diff(TestFxs.g2, n))
+        print(backprop_diff(TestFxs.g2, n))
+        assert(math.isclose(numerical_diff(TestFxs.g2, n),backprop_diff(TestFxs.g2, n), rel_tol=1e-05))
+
+
+
+
+
+    print('passed tests for part 2')
+
 if __name__ == "__main__":
     # TODO: Test your code using the provided test functions and your own functions
     test_part1()
+    test_part2()
    
     # n= np.random.rand(2,2)
     n = np.random.rand()
