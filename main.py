@@ -171,6 +171,23 @@ class BackproppableArray(object):
 
 # TODO: implement any helper functions you'll need to backprop through vectors
 
+#return the grad of self in a shape that is suitable to add to the gradient of x or y
+def fix_broadcast(self, x):
+
+    #case 1 is that x has missing dimensions that were broadcast to be 1
+    
+
+
+
+    #case 2 is that x had 1-d dimensions
+
+
+    return self.grad
+
+
+
+
+
 # a class for an array that's the result of an addition operation
 class BA_Add(BackproppableArray):
     # x + y
@@ -181,8 +198,8 @@ class BA_Add(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (2.3) improve grad fn for Add
-        self.x.grad += self.grad.sum()
-        self.y.grad += self.grad
+        self.x.grad += fix_broadcast(self,x)
+        self.y.grad += fix_broadcast(self,y)
 
 
 
