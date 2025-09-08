@@ -178,7 +178,7 @@ def get_broadcast(self):
     #we use .sum to sum over and shift down the dimensions that were created
     grad_x = self.grad
 
-    while (grad_x.ndim < self.x.data.ndim):
+    while (grad_x.ndim > self.x.data.ndim):
         grad_x = grad_x.sum(axis = 0)
 
     #case 2 is that x had 1-d dimensions that were broadcast
@@ -486,15 +486,17 @@ if __name__ == "__main__":
     # TODO: Test your code using the provided test functions and your own functions
     test_part1()
    
-   n= np.random.rand(2,2)
-   print("n = ", n)
-   print(TestFxs.g1(n))
+    # n= np.random.rand(2,2)
+    n = np.random.rand()
+    print("n = ", n)
+    print(TestFxs.g1(n))
 
-   print(numerical_grad(TestFxs.g1, n))
+    print(numerical_diff(TestFxs.g1, n))
+    print(backprop_diff(TestFxs.g1, n))
 
-    x = np.array([1, 2, 3])
-    print(x.ndim)
-    print(x.shape)
+    # x = np.array([1, 2, 3])
+    # print(x.ndim)
+    # print(x.shape)
 
     
 
