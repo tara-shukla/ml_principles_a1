@@ -111,11 +111,11 @@ class BackproppableArray(object):
         sorted_deps = sorted(all_my_dependencies, key = lambda x:x.order, reverse = True)
 
         for dep in sorted_deps:
-            # dep.grad = np.zeros_like(dep.data)
-            dep.grad = 0
+            dep.grad = np.zeros_like(dep.data)
+            # dep.grad = 0
 
-        # self.grad = np.ones_like(dep.data)
-        self.grad = 1
+        self.grad = np.ones_like(dep.data)
+        # self.grad = 1
 
         for dep in sorted_deps:
             dep.grad_fn()
@@ -153,6 +153,11 @@ class BackproppableArray(object):
 
     # TODO (2.2) Add operator overloading for matrix multiplication
 
+    #wrong? check this
+    def __rmatmul__(self, other):
+        return BA_MatMul(to_ba(other),self)
+    
+
     def sum(self, axis=None, keepdims=True):
         return BA_Sum(self, axis)
 
@@ -176,8 +181,10 @@ class BA_Add(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (2.3) improve grad fn for Add
-        self.x.grad += self.grad
+        self.x.grad += self.grad.sum()
         self.y.grad += self.grad
+
+
 
 # a class for an array that's the result of a subtraction operation
 class BA_Sub(BackproppableArray):
@@ -234,7 +241,13 @@ class BA_MatMul(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (2.1) implement grad fn for MatMul
-        pass
+        # m, n = self.x.data.shape
+        # p, q = self.y.data.shape
+        # #dim of the gradient will be mnpq
+
+        #possible this is wrong ? 
+        self.x.grad += self.grad@self.y.data.T
+        self.y.grad += self.x.data.T@self.grad
 
 
 # a class for an array that's the result of an exponential operation
@@ -275,6 +288,10 @@ def log(x):
 # TODO: Add your own function
 # END TODO
 
+
+
+
+
 # a class for an array that's the result of a sum operation
 class BA_Sum(BackproppableArray):
     # x.sum(axis, keepdims=True)
@@ -285,7 +302,7 @@ class BA_Sum(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (2.1) implement grad fn for Sum
-        pass
+        self.x.grad+=self.grad
 
 # a class for an array that's the result of a reshape operation
 class BA_Reshape(BackproppableArray):
@@ -297,7 +314,7 @@ class BA_Reshape(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (2.1) implement grad fn for Reshape
-        pass
+        self.x.grad += self.grad.reshape(self.x.data.shape)
 
 # a class for an array that's the result of a transpose operation
 class BA_Transpose(BackproppableArray):
@@ -309,7 +326,11 @@ class BA_Transpose(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (2.1) implement grad fn for Transpose
-        pass
+
+        #un-transpose the array by transposing self grad with inverse axes
+        inverse_axes = np.empty_like(self.axes)
+        inverse_axes[self.axes] = np.arange(len(self.axes))
+        self.x.grad+=self.grad.transpose(inverse_axes)
 
 
 # numerical derivative of scalar function f at x, using tolerance eps
@@ -396,8 +417,7 @@ class TestFxs(object):
     # END TODO
 
 
-if __name__ == "__main__":
-    # TODO: Test your code using the provided test functions and your own functions
+def test_part1():
     n = np.random.random()
     n = 2
     
@@ -406,20 +426,47 @@ if __name__ == "__main__":
     # note for writeup: there's an issue with the epsilon for scalar:
     #must round for equality i.e. 2 dne 2.0000000000131024
 
-    assert(math.isclose(numerical_diff(TestFxs.f1, n),result1))
-    assert(math.isclose(backprop_diff(TestFxs.f1, n),result1))
+    assert(math.isclose(numerical_diff(TestFxs.f1, n),result1, rel_tol=1e-05))
+    assert(math.isclose(backprop_diff(TestFxs.f1, n),result1, rel_tol=1e-05))
 
 
     result2 = TestFxs.df2dx(n)
-    assert(math.isclose(numerical_diff(TestFxs.f2, n),result2))
-    assert(math.isclose(backprop_diff(TestFxs.f2, n),result2))
+    assert(math.isclose(numerical_diff(TestFxs.f2, n),result2, rel_tol=1e-05))
+    assert(math.isclose(backprop_diff(TestFxs.f2, n),result2, rel_tol=1e-05))
 
 
-    assert(math.isclose(backprop_diff(TestFxs.f4, n),numerical_diff(TestFxs.f4, n)))
+    assert(math.isclose(backprop_diff(TestFxs.f4, n),numerical_diff(TestFxs.f4, n), rel_tol=1e-05))
 
     result3 = TestFxs.df3dx(n)
-    assert(math.isclose(numerical_diff(TestFxs.f3, n),result3))
-    assert(math.isclose(backprop_diff(TestFxs.f3, n),result3))
+    assert(math.isclose(numerical_diff(TestFxs.f3, n),result3, rel_tol=1e-05))
+    assert(math.isclose(backprop_diff(TestFxs.f3, n),result3, rel_tol=1e-05))
+
+    print('passed tests for part 1')
+
+
+if __name__ == "__main__":
+    # TODO: Test your code using the provided test functions and your own functions
+#    test_part1()
+   
+#    #n= np.random.rand(2,2)
+#    n = np.random.rand()
+#    print("n = ", n)
+#    print(TestFxs.g1(n))
+
+#    print(numerical_grad(TestFxs.g1, n))
+
+    x = np.array([1, 2, 3])
+    print(x.ndim)
+    print(x.shape)
+    n, m = x.shape
+    print(n)
+    print(m)
+    
+
+
+
+   
+    
     
 
 
