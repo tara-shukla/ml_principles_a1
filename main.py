@@ -172,17 +172,22 @@ class BackproppableArray(object):
 # TODO: implement any helper functions you'll need to backprop through vectors
 
 #return the grad of self in a shape that is suitable to add to the gradient of x or y
-def fix_broadcast(self, x):
+def fix_broadcast(self):
 
     #case 1 is that x has missing dimensions that were broadcast to be 1
-    
+    #we use .sum to sum over and shift down the dimensions that were created
+    grad = self.grad
 
+    while (grad.ndim < self.x.data.ndim):
+        grad = grad.sum(axis = 0)
 
+    #case 2 is that x had 1-d dimensions that were broadcast
+    #iterate through the dimensions in the x gradient to see 
+    for i in range(self.x.data.ndim):
+        if self.x.data.shape[i] ==1 and grad.shape[i]>1:
+            grad = grad.sum(axis = i, keepdims= True)    
 
-    #case 2 is that x had 1-d dimensions
-
-
-    return self.grad
+    return grad
 
 
 
