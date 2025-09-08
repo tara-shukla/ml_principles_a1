@@ -211,9 +211,9 @@ class BA_Add(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (2.3) improve grad fn for Add
-        self.x.grad += fix_broadcast(self,x)
-        self.y.grad += fix_broadcast(self,y)
-
+        self_grad_x_shape, self_grad_y_shape = get_broadcast(self)
+        self.x.grad +=self_grad_x_shape
+        self.y.grad += self_grad_y_shape
 
 
 # a class for an array that's the result of a subtraction operation
@@ -476,7 +476,7 @@ def test_part1():
 
 if __name__ == "__main__":
     # TODO: Test your code using the provided test functions and your own functions
-#    test_part1()
+    test_part1()
    
 #    #n= np.random.rand(2,2)
 #    n = np.random.rand()
@@ -485,12 +485,11 @@ if __name__ == "__main__":
 
 #    print(numerical_grad(TestFxs.g1, n))
 
-    x = np.array([1, 2, 3])
-    print(x.ndim)
-    print(x.shape)
-    n, m = x.shape
-    print(n)
-    print(m)
+    # x = np.array([1, 2, 3])
+    # print(x.ndim)
+    # print(x.shape)
+    # print(n)
+    # print(m)
     
 
 
