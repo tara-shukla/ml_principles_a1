@@ -226,8 +226,10 @@ class BA_Sub(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (1.3, 2.3) implement grad fn for Sub
-        self.x.grad += self.grad
-        self.y.grad -= self.grad
+        self_grad_x_shape, self_grad_y_shape = get_broadcast(self)
+
+        self.x.grad += self_grad_x_shape
+        self.y.grad -= self_grad_y_shape
         
 
 # a class for an array that's the result of a multiplication operation
@@ -240,8 +242,11 @@ class BA_Mul(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (1.3, 2.3) implement grad fn for Mul
-        self.x.grad += self.grad*self.y.data
-        self.y.grad += self.grad*self.x.data
+        self_grad_x_shape, self_grad_y_shape = get_broadcast(self)
+
+        #shd this be x or y shape ? 
+        self.x.grad += self_grad_x_shape*self.y.data
+        self.y.grad += self_grad_y_shape*self.x.data
     
 
 # a class for an array that's the result of a division operation
@@ -254,8 +259,11 @@ class BA_Div(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (1.3, 2.3) implement grad fn for Div
-        self.x.grad += self.grad*(1/self.y.data)
-        self.y.grad += self.grad*( (-1*self.x.data)* ((self.y.data)**(-2) ))
+        #again, shd this be x or y shape idk
+        self_grad_x_shape, self_grad_y_shape = get_broadcast(self)
+
+        self.x.grad += self_grad_x_shape*(1/self.y.data)
+        self.y.grad += self_grad_y_shape*( (-1*self.x.data)* ((self.y.data)**(-2) ))
 
 
 # a class for an array that's the result of a matrix multiplication operation
