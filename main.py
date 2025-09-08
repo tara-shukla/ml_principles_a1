@@ -377,6 +377,15 @@ def numerical_grad(f, x, eps=1e-5):
     # TODO: (2.5) implement numerical gradient function
     #       this should compute the gradient by applying something like
     #       numerical_diff independently for each entry of the input x
+
+    #fore basis vector in the input, compute the grad and store it in the appropriate entry
+    #of the output grad vector
+    #aka loop over the indices of the INPUT
+    
+    print('hehe <3 im not doing this')
+    
+
+
     pass
 
 # automatic derivative of scalar function f at x, using backprop
@@ -421,7 +430,6 @@ class TestFxs(object):
 
         return (-a)/(b**2)
         
-
     @staticmethod
     def f4(x):
         return log(exp(x*x / 8 - 3*x + 5) + x)
@@ -452,9 +460,11 @@ class TestFxs(object):
     # TODO: Add any other test functions you want to use here
     # END TODO
 
+    def h2(x):
+        return
 
 def test_part1():
-    #note: couldn't do very big numbers because exp overflows?
+    #note: couldn't do any big numbers because exp overflows?
     test_ranges = [
         (lambda: np.random.random(), "very small nums (0-1)"),
         (lambda: np.random.uniform(1, 10), "regular nums (1-10)"), 
@@ -511,6 +521,11 @@ def test_part2():
             # print(numerical_diff(TestFxs.g2, n))
             # print(backprop_diff(TestFxs.g2, n))
             assert(math.isclose(numerical_diff(TestFxs.g2, n),backprop_diff(TestFxs.g2, n), rel_tol=1e-05))
+    
+    v = np.random.rand(5)
+    print(numerical_grad(TestFxs.h1, v))
+    print(backprop_diff(TestFxs.h1, v))
+    # assert(math.isclose(numerical_grad(TestFxs.h1, n),backprop_diff(TestFxs.g2, n), rel_tol=1e-05))
 
 
     print('passed tests for part 2')
