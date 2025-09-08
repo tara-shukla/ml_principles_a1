@@ -486,18 +486,16 @@ if __name__ == "__main__":
     # TODO: Test your code using the provided test functions and your own functions
     test_part1()
    
-#    #n= np.random.rand(2,2)
-#    n = np.random.rand()
-#    print("n = ", n)
-#    print(TestFxs.g1(n))
+   n= np.random.rand(2,2)
+   print("n = ", n)
+   print(TestFxs.g1(n))
 
-#    print(numerical_grad(TestFxs.g1, n))
+   print(numerical_grad(TestFxs.g1, n))
 
-    # x = np.array([1, 2, 3])
-    # print(x.ndim)
-    # print(x.shape)
-    # print(n)
-    # print(m)
+    x = np.array([1, 2, 3])
+    print(x.ndim)
+    print(x.shape)
+
     
 
 
