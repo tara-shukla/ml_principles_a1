@@ -378,15 +378,26 @@ def numerical_grad(f, x, eps=1e-5):
     #       this should compute the gradient by applying something like
     #       numerical_diff independently for each entry of the input x
 
-    #fore basis vector in the input, compute the grad and store it in the appropriate entry
-    #of the output grad vector
-    #aka loop over the indices of the INPUT
     
-    print('hehe <3 im not doing this')
+    grad = np.zeros_like(x) 
     
+    x_flat = x.flatten()
+    grad_flat = grad.flatten()
+    
+    for i in range(len(x_flat)):
+        x_plus = x_flat.copy()
+        x_minus = x_flat.copy()
+        
+        x_plus[i] += eps   
+        x_minus[i] -= eps 
+        
+        x_plus_reshaped = x_plus.reshape(x.shape)
+        x_minus_reshaped = x_minus.reshape(x.shape)
+        
+        grad_flat[i] = (f(x_plus_reshaped) - f(x_minus_reshaped)) / (2 * eps)
+    
+    return grad_flat.reshape(x.shape)
 
-
-    pass
 
 # automatic derivative of scalar function f at x, using backprop
 def backprop_diff(f, x):
