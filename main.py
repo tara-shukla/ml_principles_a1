@@ -454,18 +454,18 @@ class TestFxs(object):
 
 
 def test_part1():
+    #note: couldn't do very big numbers because exp overflows?
     test_ranges = [
-        (lambda: np.random.random(), "tiny nums (0-1)"),
-        (lambda: np.random.uniform(1e3, 1e6), "big nums (1000-1M)"),
-        (lambda: np.random.uniform(1e6, 1e9), "super large nums (1M-1B)"),
-        (lambda: np.random.uniform(-1e6, 1e6), "everything"),
+        (lambda: np.random.random(), "very small nums (0-1)"),
+        (lambda: np.random.uniform(1, 10), "regular nums (1-10)"), 
+        # (lambda: np.random.uniform(1e6, 1e9), "big big nums (1M-1B)"),
+        # (lambda: np.random.uniform(-1e6, 1e6), "mixed")
     ]
-    
-    for range, desc in test_ranges:
-        n = range
-        print("testing ", desc)
-
+    for tester, desc in test_ranges:
+        # print("testing ", desc)
         for i in range(1000):
+            n = tester()
+
             result1 = TestFxs.df1dx(n)
 
             # note for writeup: there's an issue with the epsilon for scalar:
@@ -487,24 +487,30 @@ def test_part1():
             result3 = TestFxs.df3dx(n)
             assert(math.isclose(numerical_diff(TestFxs.f3, n),result3, rel_tol=1e-05))
             assert(math.isclose(backprop_diff(TestFxs.f3, n),result3, rel_tol=1e-05))
-    
+
 
     print('passed tests for part 1')
 
 
 def test_part2():
-    for i in range(1000):
-        n = np.random.uniform(0, 1)
-        print("n = ", n)
-        
-        assert(math.isclose(numerical_diff(TestFxs.g1, n),backprop_diff(TestFxs.g1, n), rel_tol=1e-05))
-        
-        print(numerical_diff(TestFxs.g2, n))
-        print(backprop_diff(TestFxs.g2, n))
-        assert(math.isclose(numerical_diff(TestFxs.g2, n),backprop_diff(TestFxs.g2, n), rel_tol=1e-05))
+    test_ranges = [
+        (lambda: np.random.uniform(1e-2,1), "small nums (0-1)"),
+        (lambda: np.random.uniform(1, 10), "regular nums (1-10)"), 
+        (lambda: np.random.uniform(1e3, 1e5), "big nums (1M-1B)"),
+        # (lambda: np.random.uniform(1e5, 1e6), "big big nums (1M-1B)"),
+    ]
 
-
-
+    for tester, desc in test_ranges:
+        # print("testing ", desc)
+        for i in range(1000):
+            n = tester()
+            # print("n = ", n)
+            
+            assert(math.isclose(numerical_diff(TestFxs.g1, n),backprop_diff(TestFxs.g1, n), rel_tol=1e-05))
+            
+            # print(numerical_diff(TestFxs.g2, n))
+            # print(backprop_diff(TestFxs.g2, n))
+            assert(math.isclose(numerical_diff(TestFxs.g2, n),backprop_diff(TestFxs.g2, n), rel_tol=1e-05))
 
 
     print('passed tests for part 2')
@@ -514,17 +520,6 @@ if __name__ == "__main__":
     test_part1()
     test_part2()
    
-    # n= np.random.rand(2,2)
-    n = np.random.rand()
-    print("n = ", n)
-    print(TestFxs.g1(n))
-
-    print(numerical_diff(TestFxs.g1, n))
-    print(backprop_diff(TestFxs.g1, n))
-
-    # x = np.array([1, 2, 3])
-    # print(x.ndim)
-    # print(x.shape)
 
     
 
