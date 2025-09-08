@@ -114,7 +114,7 @@ class BackproppableArray(object):
             dep.grad = np.zeros_like(dep.data)
             # dep.grad = 0
 
-        self.grad = np.ones_like(dep.data)
+        self.grad = np.ones_like(self.data)
         # self.grad = 1
 
         for dep in sorted_deps:
