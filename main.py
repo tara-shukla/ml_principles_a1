@@ -1,8 +1,6 @@
 
 import numpy as np
-import math
-from collections import deque
-
+import time
 
 ### a function to create a unique increasing ID
 ### note that this is just a quick-and-easy way to create a global order
@@ -63,33 +61,24 @@ class BackproppableArray(object):
     # the returned list must only include each dependency ONCE
     def all_dependencies(self):
         # TODO: (1.1) implement some sort of search to get all the dependencies
-
-        '''
-        First, implement the utility function BackproppableArray.all_dependencies. 
-        This function returns all the backproppable arrays on which an array depends in its computation, 
-        including indirectly. That is, this function should return a python list containing this array,
-        any direct dependencies of this array (i.e. the arrays stored in the dependencies list), 
-        any dependencies of those dependencies, any dependencies of those dependencies, and so 
-        on indefinitely. To implement this utility function, you'll want to use some sort of graph search 
-        algorithm, e.g. breadth first search, using the dependencies field as the edges of graph.
-
-        '''
-
-        #things started crashing out when added self to deps but it shd be like that?? chat wtf
-        #add first layer to visited list and to queue 
-        queue = deque(self.dependencies)
+        dependencies = []
         visited = set()
-        visited.add(self)
+        queue = []
 
-        #travel through tree
+        queue.append(self)
+        visited.add(id(self))
+
         while queue:
-            current = queue.pop()
-            if current not in visited:
-                visited.add(current)
-                queue.extend(current.dependencies)
+            curr_array = queue.pop(0)
+            dependencies.append(curr_array)
 
-        return list(visited)
+            for dependency in curr_array.dependencies:
+                if id(dependency) not in visited:
+                    queue.append(dependency)
+                    visited.add(id(dependency))
     
+        return dependencies
+
 
     # compute gradients of this array with respect to everything it depends on
     def backward(self):
@@ -106,20 +95,20 @@ class BackproppableArray(object):
         #   (3) set the gradient accumulator of this array to 1, as an initial condition
         #           since the gradient of a number with respect to itself is 1
         #   (4) call the grad_fn function for all the dependencies in the sorted reverse order
-
-        #sort using order field: more recent have bigger order aka are first in backprop
-        sorted_deps = sorted(all_my_dependencies, key = lambda x:x.order, reverse = True)
-
-        for dep in sorted_deps:
-            dep.grad = np.zeros_like(dep.data)
-            # dep.grad = 0
-
+        
+        # (1) reverse sorting
+        sorted_dependencies = sorted(all_my_dependencies, key=lambda x: x.order, reverse=True)
+        
+        # (2) zero out grad
+        for array in all_my_dependencies:
+            array.grad = np.zeros_like(array.data)
+        
+        # (3) base differentiation
         self.grad = np.ones_like(self.data)
-        # self.grad = 1
-
-        for dep in sorted_deps:
-            dep.grad_fn()
-
+        
+        # (4) compute grad
+        for array in sorted_dependencies:
+            array.grad_fn()
 
     # function that is called to process a single step of backprop for this array
     # when called, it must be the case that self.grad contains the gradient of the loss (the
@@ -152,11 +141,12 @@ class BackproppableArray(object):
         return BA_Div(to_ba(other), self)
 
     # TODO (2.2) Add operator overloading for matrix multiplication
-    def __rmatmul__(self, other):
-        return BA_MatMul(to_ba(other),self)
     def __matmul__(self, other):
-        return BA_MatMul(self,to_ba(other))
-    
+        return BA_MatMul(self, to_ba(other))
+
+    def __rmatmul__(self, other):
+        return BA_MatMul(to_ba(other), self)
+
     def sum(self, axis=None, keepdims=True):
         return BA_Sum(self, axis)
 
@@ -169,36 +159,22 @@ class BackproppableArray(object):
         return BA_Transpose(self, axes)
 
 # TODO: implement any helper functions you'll need to backprop through vectors
-
-#return the grad of self in a shape that is suitable to add to the gradient of x or y
-def get_broadcast(self):
-
-    #case 1 is that x has missing dimensions that were broadcast to be 1
-    #we use .sum to sum over and shift down the dimensions that were created
-    grad_x = self.grad
-
-    while (grad_x.ndim > self.x.data.ndim):
-        grad_x = grad_x.sum(axis = 0)
-
-    #case 2 is that x had 1-d dimensions that were broadcast
-    #iterate through the dimensions in the x gradient to see 
-    for i in range(self.x.data.ndim):
-        if self.x.data.shape[i] ==1 and grad_x.shape[i]>1:
-            grad_x = grad_x.sum(axis = i, keepdims= True)    
-
-    #repeat for self grad to be able to grad wrt y
-    grad_y = self.grad
-
-    while (grad_y.ndim > self.y.data.ndim):
-        grad_y = grad_y.sum(axis = 0)
-
-    for i in range(self.y.data.ndim):
-        if self.y.data.shape[i] ==1 and grad_y.shape[i]>1:
-            grad_y = grad_y.sum(axis = i, keepdims= True)
-
-    return [grad_x, grad_y]
-
-
+def unbroadcast(grad, target_shape):
+    """
+    Reduces grad to target_shape by summing over broadcasted dimensions.
+    This handles the reverse of NumPy broadcasting.
+    """
+    # collapse extra dimensions from broadcasting by summing
+    ndims_added = len(grad.shape) - len(target_shape)
+    for _ in range(ndims_added):
+        grad = grad.sum(axis=0)
+    
+    # reduce enlarged dimensions from broadcasting by summing
+    for i in range(len(target_shape)):
+        if target_shape[i] == 1 and grad.shape[i] > 1:
+            grad = grad.sum(axis=i, keepdims=True)
+    
+    return grad
 
 # a class for an array that's the result of an addition operation
 class BA_Add(BackproppableArray):
@@ -210,14 +186,16 @@ class BA_Add(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (2.3) improve grad fn for Add
-        self_grad_x_shape, self_grad_y_shape = get_broadcast(self)
-        self.x.grad +=self_grad_x_shape
-        self.y.grad += self_grad_y_shape
+        # self.x.grad += self.grad
+        # self.y.grad += self.grad
+
+        self.x.grad += unbroadcast(self.grad, self.x.data.shape)
+        self.y.grad += unbroadcast(self.grad, self.y.data.shape)
 
 
 # a class for an array that's the result of a subtraction operation
 class BA_Sub(BackproppableArray):
-    # x + y
+    # x - y
     def __init__(self, x, y):
         super().__init__(x.data - y.data, [x,y])
         self.x = x
@@ -225,11 +203,12 @@ class BA_Sub(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (1.3, 2.3) implement grad fn for Sub
-        self_grad_x_shape, self_grad_y_shape = get_broadcast(self)
+        # z = x - y, dz/dx & dz/dy
+        # self.x.grad += self.grad
+        # self.y.grad += -self.grad
 
-        self.x.grad += self_grad_x_shape
-        self.y.grad -= self_grad_y_shape
-        
+        self.x.grad += unbroadcast(self.grad, self.x.data.shape)
+        self.y.grad += unbroadcast(-self.grad, self.y.data.shape)
 
 # a class for an array that's the result of a multiplication operation
 class BA_Mul(BackproppableArray):
@@ -241,12 +220,13 @@ class BA_Mul(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (1.3, 2.3) implement grad fn for Mul
-        self_grad_x_shape, self_grad_y_shape = get_broadcast(self)
+        # self.x.grad += self.grad * self.y.data
+        # self.y.grad += self.grad * self.x.data
 
-        #shd this be x or y shape ? 
-        self.x.grad += self_grad_x_shape*self.y.data
-        self.y.grad += self_grad_y_shape*self.x.data
-    
+        grad_x = self.grad * self.y.data
+        grad_y = self.grad * self.x.data
+        self.x.grad += unbroadcast(grad_x, self.x.data.shape)
+        self.y.grad += unbroadcast(grad_y, self.y.data.shape)
 
 # a class for an array that's the result of a division operation
 class BA_Div(BackproppableArray):
@@ -258,11 +238,14 @@ class BA_Div(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (1.3, 2.3) implement grad fn for Div
-        #again, shd this be x or y shape idk
-        self_grad_x_shape, self_grad_y_shape = get_broadcast(self)
+        # z = x / y
+        # self.x.grad += self.grad / self.y.data
+        # self.y.grad += self.grad * (-self.x.data / (self.y.data ** 2))
 
-        self.x.grad += self_grad_x_shape*(1/self.y.data)
-        self.y.grad += self_grad_y_shape*( (-1*self.x.data)* ((self.y.data)**(-2) ))
+        grad_x = self.grad / self.y.data
+        grad_y = self.grad * (-self.x.data / (self.y.data ** 2))
+        self.x.grad += unbroadcast(grad_x, self.x.data.shape)
+        self.y.grad += unbroadcast(grad_y, self.y.data.shape)
 
 
 # a class for an array that's the result of a matrix multiplication operation
@@ -278,13 +261,9 @@ class BA_MatMul(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (2.1) implement grad fn for MatMul
-        # m, n = self.x.data.shape
-        # p, q = self.y.data.shape
-        # #dim of the gradient will be mnpq
-
-        #possible this is wrong ? 
-        self.x.grad += self.grad@self.y.data.T
-        self.y.grad += self.x.data.T@self.grad
+        # z = x @ y, dz/dx = x' · y^T
+        self.x.grad += self.grad @ self.y.data.T
+        self.y.grad += self.x.data.T @ self.grad 
 
 
 # a class for an array that's the result of an exponential operation
@@ -296,8 +275,7 @@ class BA_Exp(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (1.3) implement grad fn for Exp
-        #use np exp or exp here??
-        self.x.grad += self.grad*np.exp(self.x.data)
+        self.x.grad += self.grad * self.data
 
 def exp(x):
     if isinstance(x, BackproppableArray):
@@ -309,12 +287,14 @@ def exp(x):
 class BA_Log(BackproppableArray):
     # log(x)
     def __init__(self, x):
-        super().__init__(np.log(x.data), [x])
+        # super().__init__(np.log(x.data), [x])
+        super().__init__(np.log(x.data + 1e-12), [x])
         self.x = x
 
     def grad_fn(self):
         # TODO: (1.3) implement grad fn for Log
-        self.x.grad += self.grad*(1/self.x.data)
+        # self.x.grad += self.grad / self.x.data
+        self.x.grad += self.grad / (self.x.data + 1e-12)
 
 def log(x):
     if isinstance(x, BackproppableArray):
@@ -324,8 +304,6 @@ def log(x):
 
 # TODO: Add your own function
 # END TODO
-
-
 
 # a class for an array that's the result of a sum operation
 class BA_Sum(BackproppableArray):
@@ -337,7 +315,8 @@ class BA_Sum(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (2.1) implement grad fn for Sum
-        self.x.grad+=self.grad
+        # dz/dx = 1, so copy dz across the summed entries
+        self.x.grad += np.broadcast_to(self.grad, self.x.data.shape)
 
 # a class for an array that's the result of a reshape operation
 class BA_Reshape(BackproppableArray):
@@ -349,6 +328,7 @@ class BA_Reshape(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (2.1) implement grad fn for Reshape
+        # reshape back
         self.x.grad += self.grad.reshape(self.x.data.shape)
 
 # a class for an array that's the result of a transpose operation
@@ -361,11 +341,8 @@ class BA_Transpose(BackproppableArray):
 
     def grad_fn(self):
         # TODO: (2.1) implement grad fn for Transpose
-
-        #un-transpose the array by transposing self grad with inverse axes
-        inverse_axes = np.empty_like(self.axes)
-        inverse_axes[self.axes] = np.arange(len(self.axes))
-        self.x.grad+=self.grad.transpose(inverse_axes)
+        # transpose to inverse axes
+        self.x.grad += self.grad.transpose(np.argsort(self.axes))
 
 
 # numerical derivative of scalar function f at x, using tolerance eps
@@ -377,28 +354,16 @@ def numerical_grad(f, x, eps=1e-5):
     #       this should compute the gradient by applying something like
     #       numerical_diff independently for each entry of the input x
 
+    x = np.array(x, dtype=float)
+    grad = np.zeros_like(x)
     
-    grad = np.zeros_like(x) 
-
-    x_flat = x.flatten()
-    grad_flat = grad.flatten()
-
+    for i in range(len(x)):
+        # Create perturbation vector (e_i scaled by eps)
+        perturbation = np.zeros_like(x)
+        perturbation[i] = eps
+        grad[i] = (f(x + perturbation) - f(x - perturbation)) / (2 * eps)
     
-    for i in range(len(x_flat)):
-        x_plus = x_flat.copy()
-        x_minus = x_flat.copy()
-        
-        
-        x_plus[i] += eps   
-        x_minus[i] -= eps 
-        
-        x_plus_reshaped = x_plus.reshape(x.shape)
-        x_minus_reshaped = x_minus.reshape(x.shape)
-        
-        grad_flat[i] = (f(x_plus_reshaped) - f(x_minus_reshaped)) / (2 * eps)
-    
-    return grad_flat.reshape(x.shape)
-
+    return grad
 
 # automatic derivative of scalar function f at x, using backprop
 def backprop_diff(f, x):
@@ -406,6 +371,7 @@ def backprop_diff(f, x):
     fx = f(ba_x)
     fx.backward()
     return ba_x.grad
+
 
 
 # class to store test functions
@@ -427,7 +393,7 @@ class TestFxs(object):
     @staticmethod
     def df2dx(x):
         # TODO (1.4) implement symbolic derivative of f2
-        return 2*x
+        return 2 * x
 
     @staticmethod
     def f3(x):
@@ -437,11 +403,12 @@ class TestFxs(object):
     @staticmethod
     def df3dx(x):
         # TODO (1.4) implement symbolic derivative of f3
-        a = (x**2) - (4*x) +3
-        b = (x**2) - (4*x) + 5
+        # = ((u² + 1)·1 - u·2u) / (u² + 1)²
+        # = (u² + 1 - 2u²) / (u² + 1)²
+        # = (1 - u²) / (u² + 1)²
+        u = x - 2.0
+        return (1 - u * u) / (u * u + 1) ** 2
 
-        return (-a)/(b**2)
-        
     @staticmethod
     def f4(x):
         return log(exp(x*x / 8 - 3*x + 5) + x)
@@ -470,132 +437,143 @@ class TestFxs(object):
         return (xb * xb).sum().reshape(())
 
     # TODO: Add any other test functions you want to use here
-    def h2(x):
-        print(type(x))
-        dim = len(x.data)
-        
-        b = np.random.uniform(1,10,dim)
-        xb = x * b 
-        div = x/b
-        return (xb * div).reshape().sum(())
+    @staticmethod
+    def high_dim(x): # takes (d, ) where d can be 1000
+        # f(x) = sum(x_i^3 * exp(-0.01 * x_i^2)) + ||x||^2 / 1000
+        x_squared = x * x        
+        term1 = (x_squared * x * exp(x_squared * (-0.01))).sum()
+        term2 = x_squared.sum() / 1000.0
+        return term1 + term2
     
-    def h3(x):
-        # print(type(x))
-        dim = len(x.data)
-        # print(dim)
-        b = np.arange(dim,dtype="float64")
-        # xb = x * b - 4
-        xb = b*x +5
-        b= b/x
-        return (xb * xb).sum().reshape(())
+    # END TODO
 
-def test_part1():
-    #note: couldn't do any big numbers because exp overflows?
-    test_ranges = [
-        (lambda: np.random.random(), "very small nums (0-1)"),
-        (lambda: np.random.uniform(1, 10), "regular nums (1-10)"), 
-        # (lambda: np.random.uniform(1e6, 1e9), "big big nums (1M-1B)"),
-        # (lambda: np.random.uniform(-1e6, 1e6), "mixed")
-    ]
-    for tester, desc in test_ranges:
-        # print("testing ", desc)
-        for i in range(1000):
-            n = tester()
-
-            result1 = TestFxs.df1dx(n)
-
-            # note for writeup: there's an issue with the epsilon for scalar:
-            #must round for equality i.e. 2 dne 2.0000000000131024
-
-            assert(math.isclose(numerical_diff(TestFxs.f1, n),result1, rel_tol=1e-05))
-            assert(math.isclose(backprop_diff(TestFxs.f1, n),result1, rel_tol=1e-05))
-
-
-            result2 = TestFxs.df2dx(n)
-            assert(math.isclose(numerical_diff(TestFxs.f2, n),result2, rel_tol=1e-05))
-            assert(math.isclose(backprop_diff(TestFxs.f2, n),result2, rel_tol=1e-05))
-
-
-            assert(math.isclose(backprop_diff(TestFxs.f4, n),
-                                numerical_diff(TestFxs.f4, n), 
-                                rel_tol=1e-05))
-
-            result3 = TestFxs.df3dx(n)
-            assert(math.isclose(numerical_diff(TestFxs.f3, n),result3, rel_tol=1e-05))
-            assert(math.isclose(backprop_diff(TestFxs.f3, n),result3, rel_tol=1e-05))
-
-
-    print('passed tests for part 1')
-
-def test_part2():
-    test_ranges = [
-        (lambda: np.random.uniform(1e-2,1), "small nums (0-1)"),
-        (lambda: np.random.uniform(1, 10), "regular nums (1-10)"), 
-        (lambda: np.random.uniform(1e3, 1e5), "big nums (1K-100k)"),
-        # (lambda: np.random.uniform(1e5, 1e6), "big big nums (1M-1B)"),
-    ]
-
-    for tester, desc in test_ranges:
-        # print("testing ", desc)
-        for i in range(1000):
-            n = tester()
-            # print("n = ", n)
-            
-            assert(math.isclose(numerical_diff(TestFxs.g1, n),backprop_diff(TestFxs.g1, n), rel_tol=1e-02))
-            
-            # print(numerical_diff(TestFxs.g2, n))
-            # print(backprop_diff(TestFxs.g2, n))
-            assert(math.isclose(numerical_diff(TestFxs.g2, n),backprop_diff(TestFxs.g2, n), rel_tol=1e-02))
-    
-    print("passed scalars part 2")
-
-    test_ranges = [
-        (lambda: np.random.uniform(1e-2,1, size = (5)), "small nums (0-1)"),
-        (lambda: np.random.uniform(1, 10, size = (5)), "regular nums (1-10)"), 
-        # (lambda: np.random.uniform(1e3, 1e5, size = (5)), "big nums (1K-100k)"),
-        # (lambda: np.random.uniform(1e5, 1e6), "big big nums (1M-1B)"),
-    ]
-
-    for tester, desc in test_ranges:
-        # print("testing ", desc)
-        for i in range(1000):
-            v = tester()
-            # print("n = ", n)
-            np.testing.assert_allclose(numerical_grad(TestFxs.h1, v),backprop_diff(TestFxs.h1, v), rtol=1e-04)
-
-    print("passed vector 1 part 2")
-
-
-    # for tester, desc in test_ranges:
-    #     print("testing ", desc)
-    #     for i in range(1000):
-    #         v = tester()
-    #         # print("n = ", n)
-    #         np.testing.assert_allclose(numerical_grad(TestFxs.h2, v),backprop_diff(TestFxs.h2, v), rtol=1e-05)
-
-    # print("passed vector 2 part 2")
-    dim = 1000
-    v = np.random.uniform(1,10, size = (dim))
-    print(TestFxs.h2(v))
-    # np.testing.assert_allclose(numerical_grad(TestFxs.h2, v),backprop_diff(TestFxs.h2, v), rtol=1e-02)
-
-
-
-    print('passed all tests for part 2')
 
 if __name__ == "__main__":
     # TODO: Test your code using the provided test functions and your own functions
-    test_part1()
-    test_part2()
-
-
-
-   
+    test_points = [0.0, 2.0, -1.0]
     
+    print("Testing derivative implementations...")
+    print("=" * 60)
     
+    # Test f1
+    print("\nTesting f1(x) = 2x + 3:")
+    print("x\t\tSymbolic\tNumerical\tBackprop\tNum Error\tBP Error")
+    print("-" * 70)
+    
+    for x in test_points:
+        symbolic = TestFxs.df1dx(x)
+        numerical = numerical_diff(TestFxs.f1, x)
+        backprop = backprop_diff(TestFxs.f1, x)
+        num_error = abs(symbolic - numerical)
+        bp_error = abs(symbolic - backprop)
+        print(f"{x}\t\t{symbolic:.6f}\t{numerical:.6f}\t{backprop:.6f}\t{num_error:.2e}\t{bp_error:.2e}")
+    
+    # Test f2
+    print("\nTesting f2(x) = x²:")
+    print("x\t\tSymbolic\tNumerical\tBackprop\tNum Error\tBP Error")
+    print("-" * 70)
+    
+    for x in test_points:
+        symbolic = TestFxs.df2dx(x)
+        numerical = numerical_diff(TestFxs.f2, x)
+        backprop = backprop_diff(TestFxs.f2, x)
+        num_error = abs(symbolic - numerical)
+        bp_error = abs(symbolic - backprop)
+        print(f"{x}\t\t{symbolic:.6f}\t{numerical:.6f}\t{backprop:.6f}\t{num_error:.2e}\t{bp_error:.2e}")
+    
+    # Test f3
+    print("\nTesting f3(x) = (x-2) / ((x-2)² + 1):")
+    print("x\t\tSymbolic\tNumerical\tBackprop\tNum Error\tBP Error")
+    print("-" * 70)
+    
+    for x in test_points:
+        symbolic = TestFxs.df3dx(x)
+        numerical = numerical_diff(TestFxs.f3, x)
+        backprop = backprop_diff(TestFxs.f3, x)
+        num_error = abs(symbolic - numerical)
+        bp_error = abs(symbolic - backprop)
+        print(f"{x}\t\t{symbolic:.6f}\t{numerical:.6f}\t{backprop:.6f}\t{num_error:.2e}\t{bp_error:.2e}")
+    
+    # Test f4
+    print("\nTesting f4(x) = log(exp(x*x / 8 - 3*x + 5) + x)")
+    print("x\t\tNumerical\tBackprop\tError")
+    print("-" * 50)
+    
+    for x in test_points:
+        numerical = numerical_diff(TestFxs.f4, x)
+        backprop = backprop_diff(TestFxs.f4, x)
+        error = abs(numerical - backprop)
+        print(f"{x}\t\t{numerical:.6f}\t{backprop:.6f}\t{error:.2e}")
+    
+    # Test g1
+    print("\nTesting g1(x)")
+    print("x\t\tNumerical\tBackprop\tError")
+    print("-" * 50)
 
+    for x in test_points:
+        numerical = numerical_diff(TestFxs.g1, x)
+        backprop = backprop_diff(TestFxs.g1, x)
+        error = abs(numerical - backprop)
+        print(f"{x}\t\t{numerical:.6f}\t{backprop:.6f}\t{error:.2e}")
 
+    # Test g2
+    print("\nTesting g2(x)")
+    print("x\t\tNumerical\tBackprop\tError")
+    print("-" * 50)
 
+    for x in test_points:
+        numerical = numerical_diff(TestFxs.g2, x)
+        backprop = backprop_diff(TestFxs.g2, x)
+        error = abs(numerical - backprop)
+        print(f"{x}\t\t{numerical:.6f}\t{backprop:.6f}\t{error:.2e}")
 
+    # Test h1
+    print("\nTesting h1(x)")
+    print("x\t\tNumerical\tBackprop\tError")
+    print("-" * 50)
 
+    vec_test_points = [
+        np.ones(5, dtype="float64"),
+        np.array([0.5, -1.0, 2.0, -3.0, 4.0]),
+    ]
+    for x in vec_test_points:
+        numerical = numerical_grad(TestFxs.h1, x)
+        backprop = backprop_diff(TestFxs.h1, x)
+        error = abs(numerical - backprop)
+        print(f"x = {x}")
+        print(f"Numerical: {numerical}")
+        print(f"Backprop:  {backprop}")
+        print(f"Error:     {error}\n")
 
+    # Test high-dim
+    print("\nTesting high_dim(x)")
+    print("x\t\tNumerical\tBackprop\tError")
+    print("-" * 50)
+    np.random.seed(42)
+    x_test = np.random.randn(1000) * 0.1
+    
+    # numpy array for numerical grad
+    def f_numpy(x):
+        ba_x = to_ba(x)
+        result = TestFxs.high_dim(ba_x)
+        return result.data.item()
+    
+    start_time = time.time()
+    numerical_grad_result = numerical_grad(f_numpy, x_test)
+    numerical_time = time.time() - start_time
+    
+    # backprop
+    start_time = time.time()
+    backprop_grad_result = backprop_diff(TestFxs.high_dim, x_test)
+    backprop_time = time.time() - start_time
+    
+    max_error = np.max(np.abs(numerical_grad_result - backprop_grad_result))
+    mean_error = np.mean(np.abs(numerical_grad_result - backprop_grad_result))
+    print(f"Numerical time:  {numerical_time:.4f} seconds")
+    print(f"Backprop time:   {backprop_time:.4f} seconds") 
+    print(f"Speedup:         {numerical_time/backprop_time:.2f}x")
+    print(f"Max error:       {max_error:.2e}")
+    print(f"Mean error:      {mean_error:.2e}")
+
+    print("\n" + "=" * 60)
+    print("Testing complete!")
