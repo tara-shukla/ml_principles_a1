@@ -438,7 +438,7 @@ class TestFxs(object):
 
     # TODO: Add any other test functions you want to use here
     @staticmethod
-    def h4(x): # takes (d, ) where d can be 1000
+    def high_dim(x): # takes (d, ) where d can be 1000
         # f(x) = sum(x_i^3 * exp(-0.01 * x_i^2)) + ||x||^2 / 1000
         x_squared = x * x        
         term1 = (x_squared * x * exp(x_squared * (-0.01))).sum()
@@ -447,107 +447,6 @@ class TestFxs(object):
     
     # END TODO
 
-    @staticmethod
-    def h2(x):  
-        m = x.reshape((40, 25))
-        r = m @ m.transpose()
-        return (r * r + 16.6).sum().reshape(())
-
-    @staticmethod  
-    def h3(x):  
-        a = x.reshape((30, 50))
-        b = np.arange(50, dtype='float64')
-        b = b.reshape(50,1)
-        mult = a@b
-        r = log(mult+1.0)
-        r = r.sum().reshape(())
-        return r
-
-def random_test_generalized(function, dimension):
-    print(f"\nTesting {function} with 1000 random input vectors or scalars")
-    print("=" * 60)
-    
-    np.random.seed(42)
-    num_tests = 100
-    vector_dim = dimension
-    
-    test_cases = {
-        "Negative [-100, 0]": [],
-        "Small [0, 0.001]": [],
-        "Large [1000, 100000]": []
-    }
-    
-    # Generate random vectors
-    for i in range(num_tests):
-        negative_vec = np.random.uniform(-100, 0, vector_dim)
-        test_cases["Negative [-100, 0]"].append(negative_vec)
-        
-        small_vec = np.random.uniform(0, 0.001, vector_dim)
-        test_cases["Small [0, 0.001]"].append(small_vec)
-        
-        large_vec = np.random.uniform(1000, 100000, vector_dim)
-        test_cases["Large [1000, 100000]"].append(large_vec)
-    
-    # convert to numpy for numerical gradient
-    def f_numpy(x):
-        ba_x = to_ba(x)
-        result = function(ba_x)
-        return result.data.item()
-    
-    # Run Test
-    for case_name, vectors in test_cases.items():
-        print(f"\nTesting {case_name}:")
-        print("-" * 50)
-        
-        mean_errors = []
-        max_errors = []
-        numerical_times = []
-        backprop_times = []
-        
-        for i, x_test in enumerate(vectors):
-            print(f"Processing test {i+1}/{num_tests}...", end='\r')
-
-            # numerical
-            start_time = time.time()
-            numerical_grad_result = numerical_grad(f_numpy, x_test)
-            numerical_time = time.time() - start_time
-            numerical_times.append(numerical_time)
-            
-            # backprop
-            start_time = time.time()
-            backprop_grad_result = backprop_diff(function, x_test)
-            backprop_time = time.time() - start_time
-            backprop_times.append(backprop_time)
-            
-            # compute error
-            error_diff = numerical_grad_result - backprop_grad_result
-            mean_error = np.mean(error_diff)
-            max_error = np.max(np.abs(error_diff))
-            mean_errors.append(mean_error)
-            max_errors.append(max_error)
-        
-        print(" " * 50)  # Clear the progress line
-        
-        # Report Results
-        mean_errors = np.array(mean_errors)
-        max_errors = np.array(max_errors)
-        numerical_times = np.array(numerical_times)
-        backprop_times = np.array(backprop_times)
-        
-        avg_mean_error = np.mean(mean_errors)
-        avg_max_error = np.mean(max_errors)
-        avg_numerical_time = np.mean(numerical_times)
-        avg_backprop_time = np.mean(backprop_times)
-        
-        print(f"Valid test cases: {len(mean_errors)}/{num_tests}")
-        print(f"Average Mean Error: {avg_mean_error:.8e}")
-        print(f"Average Max Error:  {avg_max_error:.8e}")
-        print(f"Average Numerical Time: {avg_numerical_time:.4f} seconds")
-        print(f"Average Backprop Time:  {avg_backprop_time:.4f} seconds")
-        print(f"Average Speedup: {avg_numerical_time/avg_backprop_time:.2f}x")
-        
-    print("\n" + "=" * 70)
-    print(f"Testing for {f} complete!")
 
 def random_test_g1():
     print("\nTesting g1(x) with 1000 random scalars")
@@ -603,6 +502,7 @@ def random_test_g1():
         print(f"Average Numerical Time: {avg_numerical_time:.6f} seconds")
         print(f"Average Backprop Time:  {avg_backprop_time:.6f} seconds")
         print(f"Speedup (numerical/backprop): {avg_numerical_time/avg_backprop_time:.2f}x")
+
 
 def random_test_g2():
     print("\nTesting g2(x) with 1000 random scalars")
@@ -668,6 +568,7 @@ def random_test_g2():
         print(f"Average Numerical Time: {avg_numerical_time:.6f} seconds")
         print(f"Average Backprop Time:  {avg_backprop_time:.6f} seconds")
         print(f"Speedup (numerical/backprop): {avg_numerical_time/avg_backprop_time:.2f}x")
+
 
 def random_test_h1():
     print("\nTesting h1(x) with 1000 random vectors")
@@ -744,7 +645,8 @@ def random_test_h1():
     print("\n" + "=" * 60)
     print("Random testing complete!")
 
-def random_test_h4():
+
+def random_test_high_dim():
     """Test high_dim function with 100 random vectors of dimension 1000 across three ranges"""
     print("\nTesting high_dim(x) with 100 random vectors (dim=1000)")
     print("=" * 70)
@@ -773,7 +675,7 @@ def random_test_h4():
     # convert to numpy for numerical gradient
     def f_numpy(x):
         ba_x = to_ba(x)
-        result = TestFxs.h4(ba_x)
+        result = TestFxs.high_dim(ba_x)
         return result.data.item()
     
     # Run Test
@@ -797,7 +699,7 @@ def random_test_h4():
             
             # backprop
             start_time = time.time()
-            backprop_grad_result = backprop_diff(TestFxs.h4, x_test)
+            backprop_grad_result = backprop_diff(TestFxs.high_dim, x_test)
             backprop_time = time.time() - start_time
             backprop_times.append(backprop_time)
             
@@ -831,191 +733,140 @@ def random_test_h4():
     print("\n" + "=" * 70)
     print("High dimensional testing complete!")
 
-
-def random_test_h2():
-    """Test high_dim function with 100 random vectors of dimension 1000 across three ranges"""
-    print("\nTesting high_dim(x) with 100 random vectors (dim=1000)")
-    print("=" * 70)
-    
-    np.random.seed(42)
-    num_tests = 100
-    vector_dim = 1000
-    
-    test_cases = {
-        "Negative [-100, 0]": [],
-        "Small [0, 0.001]": [],
-        "Large [1000, 100000]": []
-    }
-    
-    # Generate random vectors
-    for i in range(num_tests):
-        negative_vec = np.random.uniform(-100, 0, vector_dim)
-        test_cases["Negative [-100, 0]"].append(negative_vec)
-        
-        small_vec = np.random.uniform(0, 0.001, vector_dim)
-        test_cases["Small [0, 0.001]"].append(small_vec)
-        
-        large_vec = np.random.uniform(1000, 100000, vector_dim)
-        test_cases["Large [1000, 100000]"].append(large_vec)
-    
-    # convert to numpy for numerical gradient
-    def f_numpy(x):
-        ba_x = to_ba(x)
-        result = TestFxs.h2(ba_x)
-        return result.data.item()
-    
-    # Run Test
-    for case_name, vectors in test_cases.items():
-        print(f"\nTesting {case_name}:")
-        print("-" * 50)
-        
-        mean_errors = []
-        max_errors = []
-        numerical_times = []
-        backprop_times = []
-        
-        for i, x_test in enumerate(vectors):
-            print(f"Processing test {i+1}/{num_tests}...", end='\r')
-
-            # numerical
-            start_time = time.time()
-            numerical_grad_result = numerical_grad(f_numpy, x_test)
-            numerical_time = time.time() - start_time
-            numerical_times.append(numerical_time)
-            
-            # backprop
-            start_time = time.time()
-            backprop_grad_result = backprop_diff(TestFxs.h2, x_test)
-            backprop_time = time.time() - start_time
-            backprop_times.append(backprop_time)
-            
-            # compute error
-            error_diff = numerical_grad_result - backprop_grad_result
-            mean_error = np.mean(error_diff)
-            max_error = np.max(np.abs(error_diff))
-            mean_errors.append(mean_error)
-            max_errors.append(max_error)
-        
-        print(" " * 50)  # Clear the progress line
-        
-        # Report Results
-        mean_errors = np.array(mean_errors)
-        max_errors = np.array(max_errors)
-        numerical_times = np.array(numerical_times)
-        backprop_times = np.array(backprop_times)
-        
-        avg_mean_error = np.mean(mean_errors)
-        avg_max_error = np.mean(max_errors)
-        avg_numerical_time = np.mean(numerical_times)
-        avg_backprop_time = np.mean(backprop_times)
-        
-        print(f"Valid test cases: {len(mean_errors)}/{num_tests}")
-        print(f"Average Mean Error: {avg_mean_error:.8e}")
-        print(f"Average Max Error:  {avg_max_error:.8e}")
-        print(f"Average Numerical Time: {avg_numerical_time:.4f} seconds")
-        print(f"Average Backprop Time:  {avg_backprop_time:.4f} seconds")
-        print(f"Average Speedup: {avg_numerical_time/avg_backprop_time:.2f}x")
-        
-    print("\n" + "=" * 70)
-    print("High dimensional testing complete!")
-
-def random_test_h3():
-    """Test high_dim function with 100 random vectors of dimension 1000 across three ranges"""
-    print("\nTesting high_dim(x) with 100 random vectors (dim=1000)")
-    print("=" * 70)
-    
-    np.random.seed(42)
-    num_tests = 100
-    vector_dim = 1500
-    
-    test_cases = {
-        "Negative [-100, 0]": [],
-        "Small [0, 0.001]": [],
-        "Large [1000, 100000]": []
-    }
-    
-    # Generate random vectors
-    for i in range(num_tests):
-        negative_vec = np.random.uniform(-100, 0, vector_dim)
-        test_cases["Negative [-100, 0]"].append(negative_vec)
-        
-        small_vec = np.random.uniform(0, 0.001, vector_dim)
-        test_cases["Small [0, 0.001]"].append(small_vec)
-        
-        large_vec = np.random.uniform(1000, 100000, vector_dim)
-        test_cases["Large [1000, 100000]"].append(large_vec)
-    
-    # convert to numpy for numerical gradient
-    def f_numpy(x):
-        ba_x = to_ba(x)
-        result = TestFxs.h3(ba_x)
-        return result.data.item()
-    
-    # Run Test
-    for case_name, vectors in test_cases.items():
-        print(f"\nTesting {case_name}:")
-        print("-" * 50)
-        
-        mean_errors = []
-        max_errors = []
-        numerical_times = []
-        backprop_times = []
-        
-        for i, x_test in enumerate(vectors):
-            print(f"Processing test {i+1}/{num_tests}...", end='\r')
-
-            # numerical
-            start_time = time.time()
-            numerical_grad_result = numerical_grad(f_numpy, x_test)
-            numerical_time = time.time() - start_time
-            numerical_times.append(numerical_time)
-            
-            # backprop
-            start_time = time.time()
-            backprop_grad_result = backprop_diff(TestFxs.h3, x_test)
-            backprop_time = time.time() - start_time
-            backprop_times.append(backprop_time)
-            
-            # compute error
-            error_diff = numerical_grad_result - backprop_grad_result
-            mean_error = np.mean(error_diff)
-            max_error = np.max(np.abs(error_diff))
-            mean_errors.append(mean_error)
-            max_errors.append(max_error)
-        
-        print(" " * 50)  # Clear the progress line
-        
-        # Report Results
-        mean_errors = np.array(mean_errors)
-        max_errors = np.array(max_errors)
-        numerical_times = np.array(numerical_times)
-        backprop_times = np.array(backprop_times)
-        
-        avg_mean_error = np.mean(mean_errors)
-        avg_max_error = np.mean(max_errors)
-        avg_numerical_time = np.mean(numerical_times)
-        avg_backprop_time = np.mean(backprop_times)
-        
-        print(f"Valid test cases: {len(mean_errors)}/{num_tests}")
-        print(f"Average Mean Error: {avg_mean_error:.8e}")
-        print(f"Average Max Error:  {avg_max_error:.8e}")
-        print(f"Average Numerical Time: {avg_numerical_time:.4f} seconds")
-        print(f"Average Backprop Time:  {avg_backprop_time:.4f} seconds")
-        print(f"Average Speedup: {avg_numerical_time/avg_backprop_time:.2f}x")
-        
-    print("\n" + "=" * 70)
-    print("High dimensional testing complete!")
 
 if __name__ == "__main__":
     # TODO: Test your code using the provided test functions and your own functions
     # random_test_g1()
     # random_test_g2()
     # random_test_h1()
-    # random_test_h2()
-    # random_test_h3()
-    # random_test_h4()
-    random_test_generalized(TestFxs.g1,1)
+    random_test_high_dim()
+    
 
+    # test_points = [0.0, 2.0, -1.0]
+    
+    # print("Testing derivative implementations...")
+    # print("=" * 60)
+    
+    # # Test f1
+    # print("\nTesting f1(x) = 2x + 3:")
+    # print("x\t\tSymbolic\tNumerical\tBackprop\tNum Error\tBP Error")
+    # print("-" * 70)
+    
+    # for x in test_points:
+    #     symbolic = TestFxs.df1dx(x)
+    #     numerical = numerical_diff(TestFxs.f1, x)
+    #     backprop = backprop_diff(TestFxs.f1, x)
+    #     num_error = abs(symbolic - numerical)
+    #     bp_error = abs(symbolic - backprop)
+    #     print(f"{x}\t\t{symbolic:.6f}\t{numerical:.6f}\t{backprop:.6f}\t{num_error:.2e}\t{bp_error:.2e}")
+    
+    # # Test f2
+    # print("\nTesting f2(x) = x²:")
+    # print("x\t\tSymbolic\tNumerical\tBackprop\tNum Error\tBP Error")
+    # print("-" * 70)
+    
+    # for x in test_points:
+    #     symbolic = TestFxs.df2dx(x)
+    #     numerical = numerical_diff(TestFxs.f2, x)
+    #     backprop = backprop_diff(TestFxs.f2, x)
+    #     num_error = abs(symbolic - numerical)
+    #     bp_error = abs(symbolic - backprop)
+    #     print(f"{x}\t\t{symbolic:.6f}\t{numerical:.6f}\t{backprop:.6f}\t{num_error:.2e}\t{bp_error:.2e}")
+    
+    # # Test f3
+    # print("\nTesting f3(x) = (x-2) / ((x-2)² + 1):")
+    # print("x\t\tSymbolic\tNumerical\tBackprop\tNum Error\tBP Error")
+    # print("-" * 70)
+    
+    # for x in test_points:
+    #     symbolic = TestFxs.df3dx(x)
+    #     numerical = numerical_diff(TestFxs.f3, x)
+    #     backprop = backprop_diff(TestFxs.f3, x)
+    #     num_error = abs(symbolic - numerical)
+    #     bp_error = abs(symbolic - backprop)
+    #     print(f"{x}\t\t{symbolic:.6f}\t{numerical:.6f}\t{backprop:.6f}\t{num_error:.2e}\t{bp_error:.2e}")
+    
+    # # Test f4
+    # print("\nTesting f4(x) = log(exp(x*x / 8 - 3*x + 5) + x)")
+    # print("x\t\tNumerical\tBackprop\tError")
+    # print("-" * 50)
+    
+    # for x in test_points:
+    #     numerical = numerical_diff(TestFxs.f4, x)
+    #     backprop = backprop_diff(TestFxs.f4, x)
+    #     error = abs(numerical - backprop)
+    #     print(f"{x}\t\t{numerical:.6f}\t{backprop:.6f}\t{error:.2e}")
+    
+    # # Test g1
+    # print("\nTesting g1(x)")
+    # print("x\t\tNumerical\tBackprop\tError")
+    # print("-" * 50)
 
+    # for x in test_points:
+    #     numerical = numerical_diff(TestFxs.g1, x)
+    #     backprop = backprop_diff(TestFxs.g1, x)
+    #     error = abs(numerical - backprop)
+    #     print(f"{x}\t\t{numerical:.6f}\t{backprop:.6f}\t{error:.2e}")
 
+    # # Test g2
+    # print("\nTesting g2(x)")
+    # print("x\t\tNumerical\tBackprop\tError")
+    # print("-" * 50)
 
+    # for x in test_points:
+    #     numerical = numerical_diff(TestFxs.g2, x)
+    #     backprop = backprop_diff(TestFxs.g2, x)
+    #     error = abs(numerical - backprop)
+    #     print(f"{x}\t\t{numerical:.6f}\t{backprop:.6f}\t{error:.2e}")
+
+    # # Test h1
+    # print("\nTesting h1(x)")
+    # print("x\t\tNumerical\tBackprop\tError")
+    # print("-" * 50)
+
+    # vec_test_points = [
+    #     np.ones(5, dtype="float64"),
+    #     np.array([0.5, -1.0, 2.0, -3.0, 4.0]),
+    # ]
+    # for x in vec_test_points:
+    #     numerical = numerical_grad(TestFxs.h1, x)
+    #     backprop = backprop_diff(TestFxs.h1, x)
+    #     error = abs(numerical - backprop)
+    #     print(f"x = {x}")
+    #     print(f"Numerical: {numerical}")
+    #     print(f"Backprop:  {backprop}")
+    #     print(f"Error:     {error}\n")
+    
+
+    # # Test high-dim
+    # print("\nTesting high_dim(x)")
+    # print("x\t\tNumerical\tBackprop\tError")
+    # print("-" * 50)
+    # np.random.seed(42)
+    # x_test = np.random.randn(1000) * 0.1
+    
+    # # numpy array for numerical grad
+    # def f_numpy(x):
+    #     ba_x = to_ba(x)
+    #     result = TestFxs.high_dim(ba_x)
+    #     return result.data.item()
+    
+    # start_time = time.time()
+    # numerical_grad_result = numerical_grad(f_numpy, x_test)
+    # numerical_time = time.time() - start_time
+    
+    # # backprop
+    # start_time = time.time()
+    # backprop_grad_result = backprop_diff(TestFxs.high_dim, x_test)
+    # backprop_time = time.time() - start_time
+    
+    # max_error = np.max(np.abs(numerical_grad_result - backprop_grad_result))
+    # mean_error = np.mean(np.abs(numerical_grad_result - backprop_grad_result))
+    # print(f"Numerical time:  {numerical_time:.4f} seconds")
+    # print(f"Backprop time:   {backprop_time:.4f} seconds") 
+    # print(f"Speedup:         {numerical_time/backprop_time:.2f}x")
+    # print(f"Max error:       {max_error:.2e}")
+    # print(f"Mean error:      {mean_error:.2e}")
+
+    # print("\n" + "=" * 60)
+    # print("Testing complete!")
